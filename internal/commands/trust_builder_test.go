@@ -6,12 +6,14 @@ import (
 	"path/filepath"
 	"testing"
 
+	"github.com/golang/mock/gomock"
 	"github.com/heroku/color"
 	"github.com/sclevine/spec"
 	"github.com/sclevine/spec/report"
 	"github.com/spf13/cobra"
 
 	"github.com/buildpacks/pack/internal/commands"
+	ctm "github.com/buildpacks/pack/internal/commands/testmocks"
 	"github.com/buildpacks/pack/internal/config"
 	"github.com/buildpacks/pack/pkg/logging"
 	h "github.com/buildpacks/pack/testhelpers"
@@ -25,21 +27,25 @@ func TestTrustBuilderCommand(t *testing.T) {
 
 func testTrustBuilderCommand(t *testing.T, when spec.G, it spec.S) {
 	var (
-		command      *cobra.Command
-		logger       logging.Logger
-		outBuf       bytes.Buffer
-		tempPackHome string
-		configPath   string
+		command        *cobra.Command
+		logger         logging.Logger
+		outBuf         bytes.Buffer
+		mockController *gomock.Controller
+		mockPackClient commands.PackClient
+		tempPackHome   string
+		configPath     string
 	)
 
 	it.Before(func() {
 		var err error
 
+		mockController = gomock.NewController(t)
+		mockPackClient = ctm.NewMockPackClient(mockController)
 		logger = logging.NewLogWithWriters(&outBuf, &outBuf)
 		tempPackHome, err = os.MkdirTemp("", "pack-home")
 		h.AssertNil(t, err)
 		configPath = filepath.Join(tempPackHome, "config.toml")
-		command = commands.TrustBuilder(logger, config.Config{}, configPath, )
+		command = commands.TrustBuilder(logger, config.Config{}, configPath, mockPackClient)
 	})
 
 	it.After(func() {

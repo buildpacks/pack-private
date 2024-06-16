@@ -17,6 +17,7 @@ import (
 	"github.com/buildpacks/pack/internal/commands/testmocks"
 	"github.com/buildpacks/pack/internal/config"
 	"github.com/buildpacks/pack/internal/style"
+	"github.com/buildpacks/pack/pkg/client"
 	"github.com/buildpacks/pack/pkg/logging"
 	h "github.com/buildpacks/pack/testhelpers"
 )
@@ -33,7 +34,7 @@ func testTrustedBuilderCommand(t *testing.T, when spec.G, it spec.S) {
 		logger         logging.Logger
 		outBuf         bytes.Buffer
 		mockController *gomock.Controller
-		mockInspector  commands.BuilderInspector
+		mockInspector  *testmocks.MockBuilderInspector
 		tempPackHome   string
 		configPath     string
 	)
@@ -41,13 +42,13 @@ func testTrustedBuilderCommand(t *testing.T, when spec.G, it spec.S) {
 	it.Before(func() {
 		var err error
 
+		mockController = gomock.NewController(t)
+		mockInspector = testmocks.NewMockBuilderInspector(mockController)
+
 		logger = logging.NewLogWithWriters(&outBuf, &outBuf)
 		tempPackHome, err = os.MkdirTemp("", "pack-home")
 		h.AssertNil(t, err)
 		configPath = filepath.Join(tempPackHome, "config.toml")
-
-		mockController = gomock.NewController(t)
-		mockInspector = testmocks.NewMockBuilderInspector(mockController)
 
 		command = commands.ConfigTrustedBuilder(logger, config.Config{}, configPath, mockInspector)
 		command.SetOut(logging.GetWriterForLevel(logger, logging.InfoLevel))
@@ -135,6 +136,11 @@ func testTrustedBuilderCommand(t *testing.T, when spec.G, it spec.S) {
 		})
 
 		when("can't write to config path", func() {
+			it.Before(func() {
+				mockInspector.EXPECT().
+					InspectBuilder(gomock.Any(), false).
+					Return(&client.BuilderInfo{}, nil)
+			})
 			it("fails", func() {
 				tempPath := filepath.Join(tempPackHome, "non-existent-file.toml")
 				h.AssertNil(t, os.WriteFile(tempPath, []byte("something"), 0111))
@@ -146,6 +152,13 @@ func testTrustedBuilderCommand(t *testing.T, when spec.G, it spec.S) {
 		})
 
 		when("builder is provided", func() {
+			it.Before(func() {
+				mockInspector.EXPECT().
+					InspectBuilder(gomock.Any(), false).
+					Return(&client.BuilderInfo{}, nil).
+					AnyTimes()
+			})
+
 			when("builder is not already trusted", func() {
 				it("updates the config", func() {
 					command.SetArgs(append(args, "some-builder"))
