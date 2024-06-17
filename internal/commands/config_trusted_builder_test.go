@@ -139,7 +139,7 @@ func testTrustedBuilderCommand(t *testing.T, when spec.G, it spec.S) {
 			it.Before(func() {
 				mockInspector.EXPECT().
 					InspectBuilder(gomock.Any(), false).
-					Return(&client.BuilderInfo{}, nil)
+					Return(&client.BuilderInfo{}, nil).AnyTimes()
 			})
 			it("fails", func() {
 				tempPath := filepath.Join(tempPackHome, "non-existent-file.toml")
@@ -153,10 +153,15 @@ func testTrustedBuilderCommand(t *testing.T, when spec.G, it spec.S) {
 
 		when("builder is provided", func() {
 			it.Before(func() {
+				mockController = gomock.NewController(t)
+				mockInspector = testmocks.NewMockBuilderInspector(mockController)
+				configPath = filepath.Join(t.TempDir(), "config.toml")
+
 				mockInspector.EXPECT().
 					InspectBuilder(gomock.Any(), false).
-					Return(&client.BuilderInfo{}, nil).
-					AnyTimes()
+					Return(&client.BuilderInfo{}, nil).AnyTimes()
+				command = commands.ConfigTrustedBuilder(logger, config.Config{}, configPath, mockInspector)
+				command.SetOut(logging.GetWriterForLevel(logger, logging.InfoLevel))
 			})
 
 			when("builder is not already trusted", func() {
