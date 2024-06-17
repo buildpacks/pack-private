@@ -8,6 +8,7 @@ import (
 	reflect "reflect"
 
 	client "github.com/buildpacks/pack/pkg/client"
+
 	gomock "github.com/golang/mock/gomock"
 )
 
